@@ -118,7 +118,7 @@ open class SessionManager {
     }()
 
     /// Default memory threshold used when encoding `MultipartFormData` in bytes.
-    open static let multipartFormDataEncodingMemoryThreshold: UInt64 = 10_000_000
+    open static var multipartFormDataEncodingMemoryThreshold: UInt64 = 10
 
     /// The underlying session.
     open let session: URLSession
@@ -571,20 +571,13 @@ open class SessionManager {
         usingThreshold encodingMemoryThreshold: UInt64 = SessionManager.multipartFormDataEncodingMemoryThreshold,
         to url: URLConvertible,
         method: HTTPMethod = .post,
-        headers: HTTPHeaders? = nil,
-        encodingCompletion: ((MultipartFormDataEncodingResult) -> Void)?)
+        headers: HTTPHeaders? = nil) -> UploadRequest
     {
         do {
             let urlRequest = try URLRequest(url: url, method: method, headers: headers)
-
-            return upload(
-                multipartFormData: multipartFormData,
-                usingThreshold: encodingMemoryThreshold,
-                with: urlRequest,
-                encodingCompletion: encodingCompletion
-            )
+            return upload(multipartFormData: multipartFormData, usingThreshold: encodingMemoryThreshold, with: urlRequest)
         } catch {
-            DispatchQueue.main.async { encodingCompletion?(.failure(error)) }
+            return UploadRequest(session: self.session, requestTask: .data(nil, nil), error: error)
         }
     }
 
@@ -611,41 +604,44 @@ open class SessionManager {
     ///                                      `multipartFormDataEncodingMemoryThreshold` by default.
     /// - parameter urlRequest:              The URL request.
     /// - parameter encodingCompletion:      The closure called when the `MultipartFormData` encoding is complete.
-    open func upload(
-        multipartFormData: @escaping (MultipartFormData) -> Void,
-        usingThreshold encodingMemoryThreshold: UInt64 = SessionManager.multipartFormDataEncodingMemoryThreshold,
-        with urlRequest: URLRequestConvertible,
-        encodingCompletion: ((MultipartFormDataEncodingResult) -> Void)?)
-    {
-        DispatchQueue.global(qos: .utility).async {
+    open func upload( multipartFormData: @escaping (MultipartFormData) -> Void, usingThreshold encodingMemoryThreshold: UInt64 = SessionManager.multipartFormDataEncodingMemoryThreshold, with urlRequest: URLRequestConvertible) -> UploadRequest {
+        let request = UploadRequest(session: self.session, requestTask: .upload(nil, nil))
+        request.delegate.queue.addOperation { 
             let formData = MultipartFormData()
             multipartFormData(formData)
-
+            
             do {
                 var urlRequestWithContentType = try urlRequest.asURLRequest()
                 urlRequestWithContentType.setValue(formData.contentType, forHTTPHeaderField: "Content-Type")
-
+                
                 let isBackgroundSession = self.session.configuration.identifier != nil
-
+                
                 if formData.contentLength < encodingMemoryThreshold && !isBackgroundSession {
                     let data = try formData.encode()
-
-                    let encodingResult = MultipartFormDataEncodingResult.success(
-                        request: self.upload(data, with: urlRequestWithContentType),
-                        streamingFromDisk: false,
-                        streamFileURL: nil
-                    )
-
-                    DispatchQueue.main.async { encodingCompletion?(encodingResult) }
+                    let uploadable = UploadRequest.Uploadable.data(data, urlRequestWithContentType)
+                    let task = try uploadable.task(session: self.session, adapter: self.adapter, queue: self.queue)
+                    request.delegate.task = task
+                    
+                    self.delegate[task] = request
+                    request.resume()
+//                    if startRequestsImmediately { upload.resume() }
+//                    let encodingResult = MultipartFormDataEncodingResult.success(
+//                        request: self.upload(data, with: urlRequestWithContentType),
+//                        streamingFromDisk: false,
+//                        streamFileURL: nil
+//                    )
+//                    
+//                    DispatchQueue.main.async { encodingCompletion?(encodingResult) }
+                    request.delegate.queue.isSuspended = true
                 } else {
                     let fileManager = FileManager.default
                     let tempDirectoryURL = URL(fileURLWithPath: NSTemporaryDirectory())
                     let directoryURL = tempDirectoryURL.appendingPathComponent("org.alamofire.manager/multipart.form.data")
                     let fileName = UUID().uuidString
                     let fileURL = directoryURL.appendingPathComponent(fileName)
-
+                    
                     var directoryError: Error?
-
+                    
                     // Create directory inside serial queue to ensure two threads don't do this in parallel
                     self.queue.sync {
                         do {
@@ -654,24 +650,91 @@ open class SessionManager {
                             directoryError = error
                         }
                     }
-
+                    
                     if let directoryError = directoryError { throw directoryError }
-
+                    
                     try formData.writeEncodedData(to: fileURL)
-
-                    DispatchQueue.main.async {
-                        let encodingResult = MultipartFormDataEncodingResult.success(
-                            request: self.upload(fileURL, with: urlRequestWithContentType),
-                            streamingFromDisk: true,
-                            streamFileURL: fileURL
-                        )
-                        encodingCompletion?(encodingResult)
-                    }
+                    
+                    let uploadable = UploadRequest.Uploadable.file(fileURL, urlRequestWithContentType)
+                    let task = try uploadable.task(session: self.session, adapter: self.adapter, queue: self.queue)
+                    request.delegate.task = task
+                    
+                    self.delegate[task] = request
+                    request.resume()
+                    request.delegate.queue.isSuspended = true
+//                    DispatchQueue.main.async {
+//                        let encodingResult = MultipartFormDataEncodingResult.success(
+//                            request: self.upload(fileURL, with: urlRequestWithContentType),
+//                            streamingFromDisk: true,
+//                            streamFileURL: fileURL
+//                        )
+//                        encodingCompletion?(encodingResult)
+//                    }
                 }
             } catch {
-                DispatchQueue.main.async { encodingCompletion?(.failure(error)) }
+                request.dataDelegate.error = error
+//                DispatchQueue.main.async { encodingCompletion?(.failure(error)) }
             }
+            
         }
+        defer { request.delegate.queue.isSuspended = false }
+        return request
+        
+//        DispatchQueue.global(qos: .utility).async {
+//            let formData = MultipartFormData()
+//            multipartFormData(formData)
+//
+//            do {
+//                var urlRequestWithContentType = try urlRequest.asURLRequest()
+//                urlRequestWithContentType.setValue(formData.contentType, forHTTPHeaderField: "Content-Type")
+//
+//                let isBackgroundSession = self.session.configuration.identifier != nil
+//
+//                if formData.contentLength < encodingMemoryThreshold && !isBackgroundSession {
+//                    let data = try formData.encode()
+//
+//                    let encodingResult = MultipartFormDataEncodingResult.success(
+//                        request: self.upload(data, with: urlRequestWithContentType),
+//                        streamingFromDisk: false,
+//                        streamFileURL: nil
+//                    )
+//
+//                    DispatchQueue.main.async { encodingCompletion?(encodingResult) }
+//                } else {
+//                    let fileManager = FileManager.default
+//                    let tempDirectoryURL = URL(fileURLWithPath: NSTemporaryDirectory())
+//                    let directoryURL = tempDirectoryURL.appendingPathComponent("org.alamofire.manager/multipart.form.data")
+//                    let fileName = UUID().uuidString
+//                    let fileURL = directoryURL.appendingPathComponent(fileName)
+//
+//                    var directoryError: Error?
+//
+//                    // Create directory inside serial queue to ensure two threads don't do this in parallel
+//                    self.queue.sync {
+//                        do {
+//                            try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true, attributes: nil)
+//                        } catch {
+//                            directoryError = error
+//                        }
+//                    }
+//
+//                    if let directoryError = directoryError { throw directoryError }
+//
+//                    try formData.writeEncodedData(to: fileURL)
+//
+//                    DispatchQueue.main.async {
+//                        let encodingResult = MultipartFormDataEncodingResult.success(
+//                            request: self.upload(fileURL, with: urlRequestWithContentType),
+//                            streamingFromDisk: true,
+//                            streamFileURL: fileURL
+//                        )
+//                        encodingCompletion?(encodingResult)
+//                    }
+//                }
+//            } catch {
+//                DispatchQueue.main.async { encodingCompletion?(.failure(error)) }
+//            }
+//        }
     }
 
     // MARK: Private - Upload Implementation

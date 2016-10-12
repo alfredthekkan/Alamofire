@@ -378,17 +378,14 @@ public func upload(
     usingThreshold encodingMemoryThreshold: UInt64 = SessionManager.multipartFormDataEncodingMemoryThreshold,
     to url: URLConvertible,
     method: HTTPMethod = .post,
-    headers: HTTPHeaders? = nil,
-    encodingCompletion: ((SessionManager.MultipartFormDataEncodingResult) -> Void)?)
+    headers: HTTPHeaders? = nil) -> UploadRequest
 {
     return SessionManager.default.upload(
         multipartFormData: multipartFormData,
         usingThreshold: encodingMemoryThreshold,
         to: url,
         method: method,
-        headers: headers,
-        encodingCompletion: encodingCompletion
-    )
+        headers: headers)
 }
 
 /// Encodes `multipartFormData` using `encodingMemoryThreshold` and the default `SessionManager` and
@@ -415,15 +412,11 @@ public func upload(
 public func upload(
     multipartFormData: @escaping (MultipartFormData) -> Void,
     usingThreshold encodingMemoryThreshold: UInt64 = SessionManager.multipartFormDataEncodingMemoryThreshold,
-    with urlRequest: URLRequestConvertible,
-    encodingCompletion: ((SessionManager.MultipartFormDataEncodingResult) -> Void)?)
-{
+    with urlRequest: URLRequestConvertible) -> UploadRequest {
     return SessionManager.default.upload(
         multipartFormData: multipartFormData,
         usingThreshold: encodingMemoryThreshold,
-        with: urlRequest,
-        encodingCompletion: encodingCompletion
-    )
+        with: urlRequest)
 }
 
 #if !os(watchOS)
