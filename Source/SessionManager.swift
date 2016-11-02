@@ -52,6 +52,9 @@ open class SessionManager {
         return SessionManager(configuration: configuration)
     }()
 
+    open var httpAdditionalHeaders: HTTPHeaders = [:]
+    open var defaultEncoding: ParameterEncoding = URLEncoding.default
+    
     /// Creates default values for the "Accept-Encoding", "Accept-Language" and "User-Agent" headers.
     open static let defaultHTTPHeaders: HTTPHeaders = {
         // Accept-Encoding HTTP Header; see https://tools.ietf.org/html/rfc7230#section-4.2.3
@@ -227,8 +230,8 @@ open class SessionManager {
         _ url: URLConvertible,
         method: HTTPMethod = .get,
         parameters: Parameters? = nil,
-        encoding: ParameterEncoding = URLEncoding.default,
-        headers: HTTPHeaders? = nil)
+        encoding: ParameterEncoding = SessionManager.default.defaultEncoding,
+        headers: HTTPHeaders = SessionManager.default.httpAdditionalHeaders)
         -> DataRequest
     {
         do {

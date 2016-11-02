@@ -104,7 +104,7 @@ extension Request: CustomDebugStringConvertible {
         
         if let httpBodyData = request.httpBody, let httpBody = String(data: httpBodyData, encoding: .utf8) {
             var escapedBody = httpBody.replacingOccurrences(of: "\\\"", with: "\\\\\"")
-            escapedBody = escapedBody.replacingOccurrences(of: "\"", with: "\\\"")
+            // escapedBody = escapedBody.replacingOccurrences(of: "\"", with: "\\\"")
             
             components.append("-d \"\(escapedBody)\"")
         }
