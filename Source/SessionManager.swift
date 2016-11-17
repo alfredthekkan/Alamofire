@@ -51,6 +51,8 @@ open class SessionManager {
 
         return SessionManager(configuration: configuration)
     }()
+    
+    open static var current: SessionManager = SessionManager.default
 
     open var httpAdditionalHeaders: HTTPHeaders = [:]
     open var defaultEncoding: ParameterEncoding = URLEncoding.default

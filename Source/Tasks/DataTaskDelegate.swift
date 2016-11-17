@@ -65,7 +65,6 @@ class DataTaskDelegate: TaskDelegate, URLSessionDataDelegate {
         didReceive response: URLResponse,
         completionHandler: @escaping (URLSession.ResponseDisposition) -> Void)
     {
-        print("\(#line) " + #function)
         var disposition: URLSession.ResponseDisposition = .allow
         
         expectedContentLength = response.expectedContentLength
@@ -82,12 +81,10 @@ class DataTaskDelegate: TaskDelegate, URLSessionDataDelegate {
         dataTask: URLSessionDataTask,
         didBecome downloadTask: URLSessionDownloadTask)
     {
-        print("\(#line) " + #function)
         dataTaskDidBecomeDownloadTask?(session, dataTask, downloadTask)
     }
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        print("\(#line) " + #function)
         if initialResponseTime == nil { initialResponseTime = CFAbsoluteTimeGetCurrent() }
         if let dataTaskDidReceiveData = dataTaskDidReceiveData {
             dataTaskDidReceiveData(session, dataTask, data)
@@ -117,7 +114,6 @@ class DataTaskDelegate: TaskDelegate, URLSessionDataDelegate {
         willCacheResponse proposedResponse: CachedURLResponse,
         completionHandler: @escaping (CachedURLResponse?) -> Void)
     {
-        print("\(#line) " + #function)
         var cachedResponse: CachedURLResponse? = proposedResponse
         
         if let dataTaskWillCacheResponse = dataTaskWillCacheResponse {
