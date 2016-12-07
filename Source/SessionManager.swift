@@ -304,7 +304,7 @@ open class SessionManager {
         method: HTTPMethod = .get,
         parameters: Parameters? = nil,
         encoding: ParameterEncoding = URLEncoding.default,
-        headers: HTTPHeaders? = nil,
+        headers: HTTPHeaders = SessionManager.default.httpAdditionalHeaders,
         to destination: DownloadRequest.DownloadFileDestination? = nil)
         -> DownloadRequest
     {
@@ -423,7 +423,7 @@ open class SessionManager {
         _ fileURL: URL,
         to url: URLConvertible,
         method: HTTPMethod = .post,
-        headers: HTTPHeaders? = nil)
+        headers: HTTPHeaders = SessionManager.default.httpAdditionalHeaders)
         -> UploadRequest
     {
         do {
@@ -469,7 +469,7 @@ open class SessionManager {
         _ data: Data,
         to url: URLConvertible,
         method: HTTPMethod = .post,
-        headers: HTTPHeaders? = nil)
+        headers: HTTPHeaders = SessionManager.default.httpAdditionalHeaders)
         -> UploadRequest
     {
         do {
@@ -515,7 +515,7 @@ open class SessionManager {
         _ stream: InputStream,
         to url: URLConvertible,
         method: HTTPMethod = .post,
-        headers: HTTPHeaders? = nil)
+        headers: HTTPHeaders = SessionManager.default.httpAdditionalHeaders)
         -> UploadRequest
     {
         do {
@@ -576,7 +576,7 @@ open class SessionManager {
         usingThreshold encodingMemoryThreshold: UInt64 = SessionManager.multipartFormDataEncodingMemoryThreshold,
         to url: URLConvertible,
         method: HTTPMethod = .post,
-        headers: HTTPHeaders? = nil) -> UploadRequest
+        headers: HTTPHeaders = SessionManager.default.httpAdditionalHeaders) -> UploadRequest
     {
         do {
             let urlRequest = try URLRequest(url: url, method: method, headers: headers)
