@@ -150,11 +150,11 @@ extension Request {
 
 extension Request {
     @discardableResult
-    public func response(queue: DispatchQueue? = nil, _ completion: @escaping (URLRequest?, URLResponse?, Data?, Error?) -> Void)
+    public func responseRaw(queue: DispatchQueue? = nil, completionHandler: @escaping (URLRequest?, URLResponse?, Data?, Error?) -> Void)
         -> Self {
         delegate.queue.addOperation {
             (queue ?? DispatchQueue.main).async {
-                completion(self.request, self.response, self.delegate.data, self.delegate.error)
+                completionHandler(self.request, self.response, self.delegate.data, self.delegate.error)
             }
         }
         return self
