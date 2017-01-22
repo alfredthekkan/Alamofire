@@ -160,3 +160,49 @@ extension Request {
         return self
     }
 }
+
+extension Request {
+    /// Adds a handler to be called once the request has finished.
+    ///
+    /// - parameter options:           The JSON serialization reading options. Defaults to `.allowFragments`.
+    /// - parameter completionHandler: A closure to be executed once the request has finished.
+    ///
+    /// - returns: The request.
+    // TODO: How to solve multiple JSON variations
+    @discardableResult
+    public func JSON(
+        queue: DispatchQueue? = nil,
+        options: JSONSerialization.ReadingOptions = .allowFragments,
+        completionHandler: @escaping (DataResponse<Any>) -> Void)
+        -> Self
+    {
+        return responseRaw(completionHandler: { (request, response, data, error) in
+            self.delegate.queue.addOperation {
+                let result = Request.serializeResponseJSON(options: options, response: response as? HTTPURLResponse, data: data, error: error)
+                
+                let requestCompletedTime = self.endTime ?? CFAbsoluteTimeGetCurrent()
+                let initialResponseTime = self.delegate.initialResponseTime ?? requestCompletedTime
+                
+                let timeline = Timeline(
+                    requestStartTime: self.startTime ?? CFAbsoluteTimeGetCurrent(),
+                    initialResponseTime: initialResponseTime,
+                    requestCompletedTime: requestCompletedTime,
+                    serializationCompletedTime: CFAbsoluteTimeGetCurrent()
+                )
+                
+                var dataResponse = DataResponse<Any>(
+                    request: self.request,
+                    response: self.response,
+                    data: self.delegate.data,
+                    result: result,
+                    timeline: timeline
+                )
+                
+                dataResponse.add(self.delegate.metrics)
+                
+                (queue ?? DispatchQueue.main).async { completionHandler(dataResponse) }
+            }
+
+        })
+    }
+}
