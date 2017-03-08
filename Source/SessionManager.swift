@@ -626,6 +626,7 @@ open class SessionManager {
                     let uploadable = UploadRequest.Uploadable.data(data, urlRequestWithContentType)
                     let task = try uploadable.task(session: self.session, adapter: self.adapter, queue: self.queue)
                     request.delegate.task = task
+                    request.originalTask = uploadable
                     
                     self.delegate[task] = request
                     request.resume()
@@ -663,6 +664,7 @@ open class SessionManager {
                     let uploadable = UploadRequest.Uploadable.file(fileURL, urlRequestWithContentType)
                     let task = try uploadable.task(session: self.session, adapter: self.adapter, queue: self.queue)
                     request.delegate.task = task
+                    request.originalTask = uploadable
                     
                     self.delegate[task] = request
                     request.resume()

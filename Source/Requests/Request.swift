@@ -113,7 +113,7 @@ open class Request {
     /// The number of times the request has been retried.
     open internal(set) var retryCount: UInt = 0
 
-    let originalTask: TaskConvertible?
+    var originalTask: TaskConvertible?
 
     var startTime: CFAbsoluteTime?
     var endTime: CFAbsoluteTime?
