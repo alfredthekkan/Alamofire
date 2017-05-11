@@ -28,9 +28,15 @@ public struct DefaultDataResponse {
         self.request = request
         self.response = response
         self.data = data
-        if (error as? NSError)?.code == -1001 {
+        if (error as NSError?)?.code == -1001 {
             let info = [NSLocalizedDescriptionKey: "Oooops! We couldn’t capture your request in time. Please try again."]
-            let domain = (error as? NSError)?.domain ?? ""
+            let domain = (error as NSError?)?.domain ?? ""
+            let code = -1001
+            let merror = NSError(domain: domain, code: code, userInfo: info)
+            self.error = merror
+        }else if (error as NSError?)?.code == -1009 {
+            let info = [NSLocalizedDescriptionKey: "Oh! You are not connected to a wifi or cellular data network. Please connect and try again"]
+            let domain = (error as NSError?)?.domain ?? ""
             let code = -1001
             let merror = NSError(domain: domain, code: code, userInfo: info)
             self.error = merror
